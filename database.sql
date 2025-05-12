@@ -43,7 +43,7 @@ CREATE TABLE roomBookings(
     room INT,
     number_of_nights INT,
     checkin_date DATE,
-    booking_status VARCHAR(50),
+    booking_status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY(booking_id),
@@ -58,7 +58,8 @@ CREATE TABLE spotBookings(
     spot VARCHAR(20),
     checkin_datetime DATETIME,
     meals VARCHAR(60),
-    booking_status VARCHAR(50),
+    booking_status VARCHAR(50) DEFAULT 'pending',
+    number_of_guests INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY(booking_id),
@@ -208,3 +209,12 @@ INSERT INTO checkInCheckOutLogs (booking_type, booking_id, client_id, checkin_ti
 INSERT INTO bookingNotes (booking_type, booking_id, note) VALUES
 ('room', 1, 'Client requested early check-in.'),
 ('spot', 1, 'Client requested extra chairs.');
+
+
+INSERT INTO users (name, email, role, password)
+VALUES
+('Alice Reception', 'alice@company.com', 'reception', '$2b$10$zJZtBZHgDRPqkODyxwKMuOaU0XKkztHtHoEiX.Rz5OFLrWhd3WTNi'), -- admin123
+
+('Bob Manager', 'bob@company.com', 'manager', '$2b$10$zJZtBZHgDRPqkODyxwKMuOaU0XKkztHtHoEiX.Rz5OFLrWhd3WTNi'),     -- admin123
+
+('Catherine Admin', 'cat@company.com', 'superadmin', '$2b$10$zJZtBZHgDRPqkODyxwKMuOaU0XKkztHtHoEiX.Rz5OFLrWhd3WTNi'); -- admin123

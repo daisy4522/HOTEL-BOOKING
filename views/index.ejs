@@ -7,7 +7,13 @@
     <link rel="stylesheet" href="/styles/main.css" />
   </head>
   <body>
-    <h1>Lobo hotel Booking</h1>
+    <%- include("_header.ejs") %>
+    <section class="hero">
+      <div class="dropdown"></div>
+      <h1>Welcome to Lobo Hotel</h1>
+      <p>Experience luxury and comfort like never before.</p>
+      <a href="/#rooms" class="cta">Explore Rooms</a>
+    </section>
 
     <section>
       <h2>Our Rooms</h2>
@@ -28,7 +34,7 @@
     <section>
       <h2>Our Spots</h2>
       <div class="spots-container">
-        <!-- forEach spot -- div.spot  -->
+        <!-- forEach spot -- div.spot -->
         <% locals.spots.forEach(spot=>{ %>
 
         <div class="spot">
@@ -38,7 +44,7 @@
             Capacity: <%= spot.capacity_range %> || Price per day: <%=
             spot.price %>
           </p>
-          <a href="/book?id=<%= spot.spot_id %>"> Book Now</a>
+          <a href="/book?id=<%= spot.spot_id %>&type=spot"> Book Now</a>
         </div>
 
         <% }) %>

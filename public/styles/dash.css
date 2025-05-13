@@ -1,0 +1,33 @@
+.dash-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.dash-stats .dash-stat {
+  background-color: aliceblue;
+  padding: 14px;
+  border-radius: 10px;
+  text-align: center;
+}
+.dash-stats .dash-stat p {
+  font-size: 34px;
+  margin: 0;
+  font-weight: bold;
+}
+section {
+  margin: 20px;
+}
+table {
+  font-family: Arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+td,
+th {
+  border: 1px solid #dddddd;
+  padding: 8px;
+  text-align: left;
+}
+tr:nth-child(even) {
+  background-color: #dddddd;
+}

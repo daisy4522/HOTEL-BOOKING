@@ -9,7 +9,7 @@ const dbConnection = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
-  database: "lobo sys_db",
+  database: "lobo_sys_db",
 });
 
 const app = express();
@@ -76,7 +76,7 @@ app.use((req, res, next) => {
       ) {
         next(); // allow access to public routes
       } else {
-        res.status(401).send("Unauthorized - 401");
+        res.status(401).render("401.ejs");
       }
     }
   } else {
@@ -85,7 +85,7 @@ app.use((req, res, next) => {
       superAdminRoutes.includes(req.path) ||
       receptionistRoutes.includes(req.path)
     ) {
-      res.status(401).send("Unauthorized - 401");
+      res.status(401).render("401.ejs");
     } else {
       next();
     }
@@ -94,19 +94,29 @@ app.use((req, res, next) => {
 
 // PUBLIC ROUTES
 app.get("/", (req, res) => {
-  dbConnection.query("SELECT * FROM rooms", (roomsSelectError, rooms) => {
-    if (roomsSelectError) {
-      res.status(500).send("Server Error: 500");
+  if (req.session.user) {
+    if (req.session.user.role == "superadmin") {
+      res.redirect("/dashboard/superadmin");
+    } else if (req.session.user.role == "manager") {
+      res.redirect("/dashboard/manager");
     } else {
-      dbConnection.query("SELECT * FROM spots", (spotsSelectError, spots) => {
-        if (spotsSelectError) {
-          res.status(500).send("Server Error: 500");
-        } else {
-          res.render("index.ejs", {rooms, spots});
-        }
-      });
+      res.redirect("/dashboard/reception");
     }
-  });
+  } else {
+    dbConnection.query("SELECT * FROM rooms", (roomsSelectError, rooms) => {
+      if (roomsSelectError) {
+        res.status(500).send("Server Error: 500");
+      } else {
+        dbConnection.query("SELECT * FROM spots", (spotsSelectError, spots) => {
+          if (spotsSelectError) {
+            res.status(500).send("Server Error: 500");
+          } else {
+            res.render("index.ejs", {rooms, spots});
+          }
+        });
+      }
+    });
+  }
 });
 app.get("/login", (req, res) => {
   res.render("login.ejs");
@@ -126,7 +136,7 @@ app.get("/book", (req, res) => {
       `SELECT * FROM rooms WHERE room_id=${req.query.id}`,
       (error, roomData) => {
         if (error) {
-          res.status(500).send("Server Error: 500");
+          res.status(500).render("500.ejs");
         } else {
           res.render("book.ejs", {
             image: roomData[0].image_url,
@@ -143,7 +153,7 @@ app.get("/book", (req, res) => {
       `SELECT * FROM spots WHERE spot_id= '${req.query.id}'`,
       (error, spotData) => {
         if (error) {
-          res.status(500).send("Server Error: 500");
+          res.status(500).render("500.ejs");
         } else {
           res.render("book.ejs", {
             image: spotData[0].image_url,
@@ -220,26 +230,40 @@ app.post("/client-info", (req, res) => {
     }
   );
 });
-app.get("/completeBooking", (req, res) => {
-  const {id, type, number, checkin} = req.query;
+
+app.post("/completeBooking", (req, res) => {
+  console.log(req.body);
+  const {id, type, client, number, checkin} = req.body; // object destructuring
   if (type == "room") {
+    // client_id INT,room INT,number_of_nights INT,checkin_date DATE,
     dbConnection.query(
-      `INSERT INTO roombookings(room, client_id, number_of_guests, check_in_date) VALUES (${id}, ${client} ,${number}, ${checkin})`,
+      `INSERT INTO roomBookings(room, client_id, number_of_nights, checkin_date) VALUES(${id}, ${client}, ${number}, "${checkin}")`,
       (error) => {
         if (error) {
-          console.log(error);
-          res.status(500).send({message: "Server Error: 500", success: false});
+          res.status(500).render("500.ejs");
         } else {
-          res.json({
-            message: "Room booking completed successfully",
-            success: true,
+          res.render("bookingsuccess.ejs", {
+            message: "Room booked successfully",
+          });
+        }
+      }
+    );
+  } else {
+    //  client_id INT,spot VARCHAR(20),checkin_datetime DATETIME, meals VARCHAR(60), booking_status VARCHAR(50) DEFAULT 'pending', number_of_guests INT
+    dbConnection.query(
+      `INSERT INTO spotBookings(spot, client_id, checkin_datetime, number_of_guests,meals) VALUES("${id}", ${client}, "${checkin}", ${number}, "all")`,
+      (error) => {
+        if (error) {
+          res.status(500).render("500.ejs");
+        } else {
+          res.render("bookingsuccess.ejs", {
+            message: "Spot booked successfully",
           });
         }
       }
     );
   }
 });
-
 // END OF PUBLIC ROUTES
 app.get("/bookings", (req, res) => {
   res.render("bookings.ejs");
@@ -254,13 +278,32 @@ app.get("/addNewSpot", (req, res) => {
 app.get("/addNewRoom", (req, res) => {
   res.render("manager/newRoom.ejs");
 });
-app.get("/addNew Receptionist", (req, res) => {
+app.get("/addReceptionist", (req, res) => {
   res.render("manager/addReceptionist.ejs");
 });
 // END OF MANAGER ROUTES
 // Receptionist Routes
 app.get("/dashboard/reception", (req, res) => {
-  res.render("reception/dashboard.ejs");
+  dbConnection.query(
+    "SELECT * FROM roombookings.booking_id as id,booking_status,number_of nights,checkin_date, full_name, amount_paid, FROM roomBookings JOIN clients ON roomBookings.client_id = clients.client.id left join payments on roombookings.booking_id= payments.booking_id AND payments.booking_type ='room';",
+    (error, roombookings) => {
+      if (error) {
+        console.log(error);
+        return res.status(500).render("500.ejs");
+      }
+      dbConnection.query(
+        "SELECT spotbookings.booking_id as id, booking_status, spot, checkin_datetime,full_name, amount_paid, FROM spotbookings JOIN clients ON spotbookings, client_id=clients.client_id  left join payments on spotbookings.booking_id= payments.booking_id;",
+        (error, spotbookings) => {}
+      );
+
+      // get all the data from db
+      res.render("reception/dashboard.ejs", {
+        spotbookings: [],
+        roombookings: [],
+        totalCheckins: 5,
+      });
+    }
+  );
 });
 // end of receptionist routes
 // super admin routes
@@ -275,7 +318,7 @@ app.post("/login", (req, res) => {
     `SELECT * FROM users WHERE email="${email}"`,
     (error, userData) => {
       if (error) {
-        res.status(500).send("Server Error: 500");
+        res.status(500).render("500.ejs");
       } else {
         if (userData.length == 0) {
           res.status(401).send("User not found");

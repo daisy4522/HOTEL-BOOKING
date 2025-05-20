@@ -53,7 +53,7 @@
           <th>Payment status</th>
           <th>Actions</th>
         </tr>
-        <% spotbookings.forEach(booking => { %>
+        <% spotbookings.reverse().forEach(booking => { %>
         <tr>
           <td><%= booking.id %></td>
           <td><%= booking.clientName %></td>
@@ -62,8 +62,16 @@
           <td><%= booking.status %></td>
           <td><%= booking.amountamount_paid? "PAID" : "NOT PAID"%></td>
           <td>
-            <a href="/confirmspotcheckin/<%= booking.id %>">Check-in</a> |
-            <a href="/confirmspotcheckout/<%= booking.id %>">Check-out</a>
+            <a
+              href="/confirmroomCheckin?id=<%=booking.id%>&client=<%booking.client%>"
+              style="color: green"
+              >Check-in </a
+            >|
+            <a
+              href="/confirmroomCheckout?id=<%=booking.id%>&client=<%booking.client%>"
+              style="color: orange"
+              >Check-out
+            </a>
           </td>
         </tr>
         <%})%>
@@ -79,7 +87,7 @@
           <th>Payment status</th>
           <th>Actions</th>
         </tr>
-        <% roombookings.forEach(booking => { %>
+        <% roombookings.reverse().forEach(booking => { %>
         <tr>
           <td><%= booking.id %></td>
           <td><%= booking.full_name %></td>
@@ -88,8 +96,17 @@
           <td><%= booking.booking_status></td>
           <td><%= booking.amount_paid? "PAID" :"NOT PAID" %></td>
           <td>
-            <a href="/confirmroomCheckin/<%= booking.id %>">Check-in</a> |
-            <a href="/confirmroomCheckout/<%= booking.id %>">Check-out</a>
+            <a
+              href="/confirmroomCheckin?id=<%=booking.id%>&client=<%booking.client%>"
+              style="color: green"
+              >Check-in
+            </a>
+            |
+            <a
+              href="/confirmroomCheckout?id=<%=booking.id%>&client=<%booking.client%>"
+              style="color: orange"
+              >Check-out
+            </a>
           </td>
         </tr>
         <%})%>

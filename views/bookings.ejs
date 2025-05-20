@@ -8,6 +8,14 @@
 </head>
 <body>
     <%- include(" _header.ejs") %>
+
     <h1>Booking Page</h1>
-</body>
+    <form action="/bookings" method="POST">
+        <label for="roomId">Room ID:</label>
+        <input type="text" id="roomId" name="roomId" required />
+        <label for="userId">User ID:</label>
+        <input type="text" id="userId" name="userId" required />
+        <button type="submit">Book Room</button>
+    </form>
+    
 </html>

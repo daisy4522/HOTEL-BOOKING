@@ -4,12 +4,14 @@ const mysql = require("mysql");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const cors = require("cors");
+const multer = require("multer");
+const upload = multer({dest: "public/images"}); // multer - for file uploads
 
 const dbConnection = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
-  database: "lobo_sys_db",
+  database: "lobo sys_db",
 });
 
 const app = express();
@@ -28,13 +30,22 @@ app.use(
 );
 
 // authorizarion middleware
-const receptionistRoutes = ["/roomUpdates", "/dashboard/reception"];
+const receptionistRoutes = [
+  "/roomUpdates",
+  "/dashboard/reception",
+  "/confirmroomcheckin",
+  "/confirmspotcheckin",
+  "/confirmroomcheckout",
+  "/confirmspotcheckout",
+];
 const managerRoutes = [
   ...receptionistRoutes,
   "/addReceptionist",
   "/addNewSpot",
   "/addNewRoom",
   "/dashboard/manager",
+  "/manager/add-room",
+  "/manager/add-spot",
 ];
 const superAdminRoutes = [
   ...receptionistRoutes,
@@ -278,33 +289,257 @@ app.get("/addNewSpot", (req, res) => {
 app.get("/addNewRoom", (req, res) => {
   res.render("manager/newRoom.ejs");
 });
+app.post("/manager/add-room", upload.single("room_image"), (req, res) => {
+  console.log(req.body);
+  const {room_id, room_type, label, price_per_night} = req.body;
+  console.log(req.file);
+  dbConnection.query(
+    `INSERT INTO rooms(room_id, room_type, label, price_per_night, image_url) VALUES(${room_id}, "${room_type}", "${label}", ${price_per_night}, "/images/${req.file.filename}")`,
+    (newRoomError) => {
+      if (newRoomError) {
+        console.log(newRoomError);
+        res.status(500).render("500.ejs");
+      } else {
+        res.render("message.ejs", {message: "Room added successfully"});
+      }
+    }
+  );
+});
+
+app.post("/manager/add-spot", upload.single("spot_image"), (req, res) => {
+  console.log(req.body);
+  const {spot_id, label, price, capacity_range} = req.body;
+  console.log(req.file);
+  dbConnection.query(
+    `INSERT INTO spots(spot_id, label, price, capacity_range) VALUES("${spot_id}", "${label}", ${price}, "${capacity_range}")`,
+    "/images/${req.file.filename}",
+    (newSpotError) => {
+      if (newSpotError) {
+        console.log(newSpotError);
+        res.status(500).render("500.ejs");
+      }
+    }
+  );
+  res.render("message.ejs", {message: "Spot added successfully"});
+});
+
 app.get("/addReceptionist", (req, res) => {
-  res.render("manager/addReceptionist.ejs");
+  res.render("manager/addReception.ejs");
 });
 // END OF MANAGER ROUTES
 // Receptionist Routes
 app.get("/dashboard/reception", (req, res) => {
+  // get all the data from db
   dbConnection.query(
-    "SELECT * FROM roombookings.booking_id as id,booking_status,number_of nights,checkin_date, full_name, amount_paid, FROM roomBookings JOIN clients ON roomBookings.client_id = clients.client.id left join payments on roombookings.booking_id= payments.booking_id AND payments.booking_type ='room';",
+    "SELECT roombookings.booking_id as id, roombookings.client_id as client, booking_status, room, number_of_nights, checkin_date, full_name, amount_paid FROM roombookings JOIN clients ON roombookings.client_id = clients.client_id left join payments on roombookings.booking_id = payments.booking_id AND payments.booking_type = 'room'",
     (error, roombookings) => {
       if (error) {
         console.log(error);
         return res.status(500).render("500.ejs");
       }
-      dbConnection.query(
-        "SELECT spotbookings.booking_id as id, booking_status, spot, checkin_datetime,full_name, amount_paid, FROM spotbookings JOIN clients ON spotbookings, client_id=clients.client_id  left join payments on spotbookings.booking_id= payments.booking_id;",
-        (error, spotbookings) => {}
-      );
 
-      // get all the data from db
-      res.render("reception/dashboard.ejs", {
-        spotbookings: [],
-        roombookings: [],
-        totalCheckins: 5,
-      });
+      dbConnection.query(
+        "SELECT spotbookings.booking_id as id,  spotbookings.client_id as client, booking_status, spot, checkin_datetime, full_name, amount_paid FROM spotbookings JOIN clients ON spotbookings.client_id = clients.client_id left join payments on spotbookings.booking_id = payments.booking_id AND payments.booking_type = 'spot'",
+        (error, spotbookings) => {
+          if (error) {
+            console.log(error);
+            return res.status(500).render("500.ejs");
+          }
+          // render the page with the data
+          dbConnection.query(
+            "SELECT COUNT(log_id) as totalCheckins FROM checkincheckoutlogs WHERE checkout_time is NULL",
+            (error, totalCheckins) => {
+              if (error) {
+                console.log(error);
+                return res.status(500).render("500.ejs");
+              }
+              res.render("reception/dashboard.ejs", {
+                spotbookings: spotbookings,
+                roombookings: roombookings,
+                totalCheckins: totalCheckins[0].totalCheckins,
+              });
+            }
+          );
+        }
+      );
     }
   );
 });
+
+app.get("/confirmspotcheckin", (req, res) => {
+  const {id, client} = req.query;
+  // check if the client is already checked in
+  dbConnection.query(
+    `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "spot"`,
+    (error, data) => {
+      if (data.length > 0) {
+        res.render("message.ejs", {message: "Client already checked in"});
+      } else {
+        // insert the checkin data into the checkincheckoutlogs table
+        dbConnection.query(
+          `INSERT INTO checkincheckoutlogs(booking_id, client_id, checkin_time, booking_type) VALUES(${id}, ${client}, CURRENT_TIMESTAMP, "spot")`,
+          (error) => {
+            if (error) {
+              res.status(500).render("500.ejs");
+            } else {
+              res.render("message.ejs", {
+                message: "Client checked in successfully",
+              });
+            }
+          }
+        );
+      }
+    }
+  );
+});
+app.get("/confirmroomcheckin", (req, res) => {
+  const {id, client} = req.query;
+  // check if the client is already checked in
+  dbConnection.query(
+    `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "room"`,
+    (error, data) => {
+      if (data.length > 0) {
+        res.render("message.ejs", {message: "Client already checked in"});
+      } else {
+        // insert the checkin data into the checkincheckoutlogs table
+        dbConnection.query(
+          `INSERT INTO checkincheckoutlogs(booking_id, client_id, checkin_time, booking_type) VALUES(${id}, ${client}, CURRENT_TIMESTAMP, "room")`,
+          (error) => {
+            if (error) {
+              res.status(500).render("500.ejs");
+            } else {
+              res.render("message.ejs", {
+                message: "Client checked in successfully",
+              });
+            }
+          }
+        );
+      }
+    }
+  );
+});
+
+app.get("/confirmroomcheckout", (req, res) => {
+  const {id, client} = req.query;
+  // check for if client has paid,--- a payment record exists
+  dbConnection.query(
+    `SELECT * FROM payments WHERE booking_id= ${id} AND booking_type = "room"`,
+    (error, data) => {
+      if (error) {
+        return res.status(500).render("500.ejs");
+      }
+      if (data.length == 0) {
+        res.render("message.ejs", {
+          message: "Client has not paid ",
+          showForm: true,
+        });
+      } else {
+        // check if client is  checked in
+        dbConnection.query(
+          `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "room"`,
+          (error, data) => {
+            if (error) {
+              return res.status(500).render("500.ejs");
+            }
+            if (data.length == 0) {
+              res.render("message.ejs", {message: "Client not checked in"});
+            } else {
+              // check if client is already checked out
+              dbConnection.query(
+                `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "room" AND checkout_time IS NOT NULL`,
+                (error, data) => {
+                  if (error) {
+                    return res.status(500).render("500.ejs");
+                  }
+                  if (data.length > 0) {
+                    res.render("message.ejs", {
+                      message: "Client already checked out",
+                    });
+                  } else {
+                    // update the checkout time
+                    dbConnection.query(
+                      `UPDATE checkincheckoutlogs SET checkout_time = CURRENT_TIMESTAMP WHERE booking_id= ${id} AND booking_type = "room"`,
+                      (error) => {
+                        if (error) {
+                          return res.status(500).render("500.ejs");
+                        } else {
+                          res.render("message.ejs", {
+                            message: "Client checked out successfully",
+                          });
+                        }
+                      }
+                    );
+                  }
+                }
+              );
+            }
+          }
+        );
+      }
+    }
+  );
+});
+app.get("/confirmspotcheckout", (req, res) => {
+  const {id, client} = req.query;
+  // check for if client has paid,--- a payment record exists
+  dbConnection.query(
+    `SELECT * FROM payments WHERE booking_id= ${id} AND booking_type = "spot"`,
+    (error, data) => {
+      if (error) {
+        return res.status(500).render("500.ejs");
+      }
+      if (data.length == 0) {
+        res.render("message.ejs", {
+          message: "Client has not paid ",
+          showForm: true,
+        });
+      } else {
+        // check if client is  checked in
+        dbConnection.query(
+          `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "spot"`,
+          (error, data) => {
+            if (error) {
+              return res.status(500).render("500.ejs");
+            }
+            if (data.length == 0) {
+              res.render("message.ejs", {message: "Client not checked in"});
+            } else {
+              // check if client is already checked out
+              dbConnection.query(
+                `SELECT * FROM checkincheckoutlogs WHERE booking_id= ${id} AND booking_type = "spot" AND checkout_time IS NOT NULL`,
+                (error, data) => {
+                  if (error) {
+                    return res.status(500).render("500.ejs");
+                  }
+                  if (data.length > 0) {
+                    res.render("message.ejs", {
+                      message: "Client already checked out",
+                    });
+                  } else {
+                    // update the checkout time
+                    dbConnection.query(
+                      `UPDATE checkincheckoutlogs SET checkout_time = CURRENT_TIMESTAMP WHERE booking_id= ${id} AND booking_type = "spot"`,
+                      (error) => {
+                        if (error) {
+                          return res.status(500).render("500.ejs");
+                        } else {
+                          res.render("message.ejs", {
+                            message: "Client checked out successfully",
+                          });
+                        }
+                      }
+                    );
+                  }
+                }
+              );
+            }
+          }
+        );
+      }
+    }
+  );
+});
+
 // end of receptionist routes
 // super admin routes
 app.get("/dashboard/superadmin", (req, res) => {
@@ -345,7 +580,7 @@ app.get("/logout", (req, res) => {
   res.redirect("/"); // redirect to home page
 });
 
-// console.log(bcrypt.hashSync("admin678", 3)); // hash password - for testing
+//nsole.log(bcrypt.hashSync("admin678", 3)); // hash password - for testing
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");

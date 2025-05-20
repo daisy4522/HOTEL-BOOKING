@@ -24,7 +24,7 @@
           <img src="<%= room.image_url %>" alt="<%= room.label %>" />
           <h3><%= room.room_type %> - <%= room.label %></h3>
           <p>KSH. <%= room.price_per_night %> Per Night</p>
-          <a href="/book?id=<%=room.room_id%>">Book Now</a>
+          <a href="/book?id=<%=rooms.room_id%>">Book Now</a>
         </div>
 
         <% }) %>
@@ -38,7 +38,7 @@
         <% locals.spots.forEach(spot=>{ %>
 
         <div class="spot">
-          <img src="<%= spot.image_url %>" alt="<%= spot.spot_id %> spot" />
+          <img src="<%= spot.image_url %>" alt="<%= spot.spo_id %> spot" />
           <h3><%= spot.spot_id %> - <span> <%= spot.label %> </span></h3>
           <p>
             Capacity: <%= spot.capacity_range %> || Price per day: <%=
@@ -52,3 +52,4 @@
     </section>
   </body>
 </html>
+t
